@@ -1,7 +1,8 @@
 package java_database_app;
-
 import java.sql.*;
 import java.util.Scanner;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class Databasemm {
     public static void main(String[] args) {
@@ -18,38 +19,28 @@ public class Databasemm {
                 "root"  // Replace with your database password
             );
 
+            // User Authentication
             while (true) {
-                System.out.println("\n--- Main Menu ---");
-                System.out.println("1. Create a New Table");
-                System.out.println("2. Insert Data");
-                System.out.println("3. Update Data");
-                System.out.println("4. Delete Data");
-                System.out.println("5. Filter Data (LIKE Query)");
-                System.out.println("6. Showcase Table Data");
-                System.out.println("7. Exit");
+                System.out.println("\n--- Authentication Menu ---");
+                System.out.println("1. Sign Up");
+                System.out.println("2. Log In");
+                System.out.println("3. Exit");
                 System.out.print("Enter your choice: ");
                 int choice = scanner.nextInt();
 
                 switch (choice) {
                     case 1:
-                        createTable(scanner, con);
+                        signup(scanner, con);
                         break;
                     case 2:
-                        insertData(scanner, con);
+                        if (login(scanner, con)) {
+                            System.out.println("Login successful!");
+                            showMainMenu(scanner, con); // Show main menu after login
+                        } else {
+                            System.out.println("Invalid username or password.");
+                        }
                         break;
                     case 3:
-                        updateData(scanner, con);
-                        break;
-                    case 4:
-                        deleteData(scanner, con);
-                        break;
-                    case 5:
-                        filterData(scanner, con);
-                        break;
-                    case 6:
-                        showcaseTableData(scanner, con);
-                        break;
-                    case 7:
                         System.out.println("Exiting program...");
                         con.close();
                         scanner.close();
@@ -72,7 +63,108 @@ public class Databasemm {
         }
     }
 
-    private static void createTable(Scanner scanner, Connection con) throws SQLException {
+    // Hash password function using SHA-256
+    private static String hashPassword(String password) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(password.getBytes());
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : hash) {
+            hexString.append(String.format("%02x", b));
+        }
+        return hexString.toString();
+    }
+
+    private static void signup(Scanner scanner, Connection con) throws SQLException, NoSuchAlgorithmException {
+        System.out.print("Enter a new username: ");
+        String username = scanner.next();
+
+        System.out.print("Enter a password: ");
+        String password = scanner.next();
+
+        System.out.print("Enter your email: ");
+        String email = scanner.next();
+
+        System.out.print("Enter your phone number: ");
+        String phone = scanner.next();
+
+        String hashedPassword = hashPassword(password);
+
+        String query = "INSERT INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)";
+        PreparedStatement ps = con.prepareStatement(query);
+        ps.setString(1, username);
+        ps.setString(2, hashedPassword);
+        ps.setString(3, email);
+        ps.setString(4, phone);
+
+        int rowsInserted = ps.executeUpdate();
+        if (rowsInserted > 0) {
+            System.out.println("User registered successfully!");
+        } else {
+            System.out.println("Failed to register the user.");
+        }
+    }
+
+    private static boolean login(Scanner scanner, Connection con) throws SQLException, NoSuchAlgorithmException {
+        System.out.print("Enter your username: ");
+        String username = scanner.next();
+
+        System.out.print("Enter your password: ");
+        String password = scanner.next();
+
+        String hashedPassword = hashPassword(password);
+
+        String query = "SELECT * FROM users WHERE username = ? AND password = ?";
+        PreparedStatement ps = con.prepareStatement(query);
+        ps.setString(1, username);
+        ps.setString(2, hashedPassword);
+
+        ResultSet rs = ps.executeQuery();
+        return rs.next(); // If the result set contains a record, login is successful
+    }
+
+    private static void showMainMenu(Scanner scanner, Connection con) throws SQLException {
+        while (true) {
+            System.out.println("\n--- Main Menu ---");
+            System.out.println("1. Create a New Table");
+            System.out.println("2. Insert Data");
+            System.out.println("3. Update Data");
+            System.out.println("4. Delete Data");
+            System.out.println("5. Filter Data (LIKE Query)");
+            System.out.println("6. Showcase Table Data");
+            System.out.println("7. Exit");
+            System.out.print("Enter your choice: ");
+            int choice = scanner.nextInt();
+
+            switch (choice) {
+                case 1:
+                    createTable(scanner, con);
+                    break;
+                case 2:
+                    insertData(scanner, con);
+                    break;
+                case 3:
+                    updateData(scanner, con);
+                    break;
+                case 4:
+                    deleteData(scanner, con);
+                    break;
+                case 5:
+                    filterData(scanner, con);
+                    break;
+                case 6:
+                    showcaseTableData(scanner, con);
+                    break;
+                case 7:
+                    System.out.println("Exiting program...");
+                    con.close();
+                    scanner.close();
+                    System.exit(0);
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+        private static void createTable(Scanner scanner, Connection con) throws SQLException {
         System.out.print("Enter the table name: ");
         String tableName = scanner.next();
 
@@ -264,4 +356,7 @@ public class Databasemm {
             System.out.println();
         }
     }
+
+
+    // Remaining methods (createTable, insertData, updateData, deleteData, filterData, showcaseTableData) remain unchanged...
 }
